@@ -1,2 +1,4 @@
 .o
-./obj/
+lab1/obj/
+.idea/
+**/.idea/

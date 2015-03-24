@@ -4,7 +4,10 @@ CFLAGS=-c -Wall
 OBJ_DIR=obj
 SRC_DIR=src
 
-all: main
+all: dirs main
+
+dirs:
+	if [ ! -d obj ]; then mkdir obj; fi
 
 main: main.o list_funs.o list_structs.o utils.o
 	$(CC) $(OBJ_DIR)/main.o $(OBJ_DIR)/list_funs.o $(OBJ_DIR)/list_structs.o $(OBJ_DIR)/utils.o -o $(OBJ_DIR)/main

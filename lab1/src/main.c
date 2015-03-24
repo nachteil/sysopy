@@ -6,6 +6,12 @@
 int main(int argc, char * argv[]) {
 
     list_t * list = create_sample_list();
+
+    print_list(list);
+
+    printf("-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n\n");
+
+    list_sort(list);
     print_list(list);
 
     return 0;
@@ -18,6 +24,8 @@ list_t *create_sample_list()
     list_node_t * node_3 = create_node();
     list_node_t * node_4 = create_node();
     list_node_t * node_5 = create_node();
+    list_node_t * node_6 = create_node();
+    list_node_t * node_7 = create_node();
 
     //
 
@@ -104,6 +112,40 @@ list_t *create_sample_list()
     node_5 -> name = "Kora";
     node_5 -> surname = "Rako";
 
+    //
+
+    node_6 -> address -> building_num = "22A/5";
+    node_6 -> address -> city = "Lodz";
+    node_6 -> address -> flat_num = "73";
+    node_6 -> address -> street = "Brzydka";
+    node_6 -> address -> zip_code = "00-010";
+
+    node_6 -> birth_date -> day = 27;
+    node_6 -> birth_date -> month = 10;
+    node_6 -> birth_date -> year = 2001;
+
+    node_6 -> email_address = "ll@dd.pl";
+    node_6 -> phone_number = "36346376";
+    node_6 -> name = "Jakub";
+    node_6 -> surname = "Kmiec";
+
+    //
+
+    node_7 -> address -> building_num = "22A/5";
+    node_7 -> address -> city = "Lodz";
+    node_7 -> address -> flat_num = "73";
+    node_7 -> address -> street = "Brzydka";
+    node_7 -> address -> zip_code = "00-010";
+
+    node_7 -> birth_date -> day = 27;
+    node_7 -> birth_date -> month = 10;
+    node_7 -> birth_date -> year = 2001;
+
+    node_7 -> email_address = "ll@dd.pl";
+    node_7 -> phone_number = "36346376";
+    node_7 -> name = "Amadeusz";
+    node_7 -> surname = "Rako";
+
     list_t * list = create_list();
 
     add_elem(list, node_1);
@@ -111,6 +153,8 @@ list_t *create_sample_list()
     add_elem(list, node_3);
     add_elem(list, node_4);
     add_elem(list, node_5);
+    add_elem(list, node_6);
+    add_elem(list, node_7);
 
     return list;
 }

@@ -17,14 +17,15 @@ void delete_list(list_t *);
 void add_elem(list_t *, list_node_t *);
 void remove_elem(list_t *, list_node_t *);
 
-list_node_t * find_elem_by_address(address_t *);
-list_node_t * find_elem_by_name(const char * const , const char * const);
+list_node_t *find_elem_by_full_name(const char *const, const char *const);
 
 void sort_list(list_t *);
 
-void remove_node(list_node_t *);
+void delete_node(list_node_t *);
 
 void print_list(list_t *);
 list_node_t * create_node();
+
+void list_sort(list_t *);
 
 #endif //_SYSOPY_LISTS_H_

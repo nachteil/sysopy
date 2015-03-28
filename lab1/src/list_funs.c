@@ -27,7 +27,6 @@ void delete_node(list_node_t *node)
     free((void *) node -> birth_date);
     free((void *) node -> address);
 
-    printf("Dependecies freed\n");
 
     free(node);
 
@@ -113,7 +112,6 @@ void remove_elem(list_t * list, list_node_t * node_to_remove)
 
     if(iteration_node == node_to_remove)
     {
-        printf("Found node to remove\n");
         if(iteration_node -> prev == NULL)
         {
             list -> head = iteration_node -> next;
@@ -128,7 +126,6 @@ void remove_elem(list_t * list, list_node_t * node_to_remove)
                 iteration_node -> next -> prev = iteration_node -> prev;
             }
         }
-        printf("Pointers ready\n");
         delete_node(iteration_node);
     }
 
@@ -343,8 +340,6 @@ void perform_quick_list_sort(list_t * list)
 
         list_node_t * next = iteration_node -> next;
 
-//        printf("Comparing %s and %s: %s\n", i_surn, surn, strcmp(i_surn, surn) == 0 ? "equal" : (strcmp(i_surn, surn) > 0 ? "first greater" : "fisrt lesser") );
-
         if(strcmp(i_name, name) == 0 && strcmp(i_surn, surn) == 0)
         {
             add_elem(equal, iteration_node);
@@ -362,13 +357,6 @@ void perform_quick_list_sort(list_t * list)
 
         iteration_node = next;
     }
-
-//    printf("\nEQUALS:\n");
-//    print_list(equal);
-//    printf("\nGREATER:\n");
-//    print_list(greater);
-//    printf("\nLESSER:\n");
-//    print_list(lesser);
 
     perform_quick_list_sort(lesser);
     perform_quick_list_sort(equal);
@@ -418,13 +406,26 @@ void list_sort(list_t * list)
 /*  *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   */
 
 
-list_node_t *find_elem_by_full_name(char * name, char * surname)
+list_node_t *find_elem_by_full_name(list_t * list, char * name, char * surname)
 {
-    if(name == NULL || surname == NULL || ! strcmp(name, "") || ! strcmp(surname(surname, "")))
+    if(list == NULL)
     {
-        printf("Cannot perform find on NULL or empty name\n");
-        return;
+        printf("Cannot look for element: list is NULL.\n");
+        return NULL;
     }
 
-    
+    if(name == NULL || surname == NULL || ! strcmp(name, "") || ! strcmp(surname, ""))
+    {
+        printf("Cannot perform find on NULL or empty name\n");
+        return NULL;
+    }
+
+    list_node_t * iteration_node = list -> head;
+    while(iteration_node != NULL && (strcmp(iteration_node -> name, name) != 0 || strcmp(iteration_node -> surname, surname) != 0))
+    {
+        iteration_node = iteration_node -> next;
+    }
+
+    return iteration_node;
+
 }

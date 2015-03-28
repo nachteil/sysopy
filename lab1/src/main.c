@@ -2,159 +2,81 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "utils.h"
+#include "sys/times.h"
+
+static long int ticks_per_sec = CLOCKS_PER_SEC;
+
+struct tms *run_time;
+struct tms previous;
+
+double prev_usr_milis = 0.0d;
+double prev_sys_milis = 0.0d;
+double prev_real_milis = 0.0d;
 
 int main(int argc, char * argv[]) {
 
+    printf("Program started. Clocks per second: %ld\n", ticks_per_sec);
+
+    run_time = (struct tms *) malloc(sizeof(struct tms));
+    verify_not_null(times);
+
+    print_time();
+
     list_t * list = create_sample_list();
 
+    printf("List created:\n");
+
     print_list(list);
 
-    printf("-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t\n\n");
+    print_time();
 
-    list_sort(list);
+    printf("-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-\n\n");
+
+    int i;
+    for(i = 0; i < 100000; ++i) {
+        list_sort(list);
+    }
+
+    printf("List sorted 100000 times\n");
+    print_time();
+
+    for(i = 0; i < 10000000; ++i) {
+        if(atoi("AGH") == 5)
+        {
+            if(1 < -1) printf("OK");
+        }
+    }
+
     print_list(list);
+
+    list_node_t * node = find_elem_by_full_name(list, "Kora", "Rako");
+    printf("Node found: %s %s\nAddress: %s %s St,. %s %s\n", node -> name, node -> surname, node -> address -> building_num,
+    node -> address -> street, node -> address -> city, node -> address -> zip_code);
+
+    printf("Program almost ended\n");
+    print_time();
 
     return 0;
 }
 
-list_t *create_sample_list()
+void print_time()
 {
-    list_node_t * node_1 = create_node();
-    list_node_t * node_2 = create_node();
-    list_node_t * node_3 = create_node();
-    list_node_t * node_4 = create_node();
-    list_node_t * node_5 = create_node();
-    list_node_t * node_6 = create_node();
-    list_node_t * node_7 = create_node();
+    previous = *run_time;
+    times(run_time);
 
-    //
+    double total_usr = (double) run_time -> tms_utime;
+    double total_sys = (double) run_time -> tms_stime;
+    double total_real =  total_sys + total_usr;
 
-    node_1 -> address -> building_num = "12";
-    node_1 -> address -> city = "Los Angeles";
-    node_1 -> address -> flat_num = "123";
-    node_1 -> address -> street = "Groove";
-    node_1 -> address -> zip_code = "90-210";
 
-    node_1 -> birth_date -> day = 2;
-    node_1 -> birth_date -> month = 11;
-    node_1 -> birth_date -> year = 1921;
+    double total_usr_milis = (total_usr / ticks_per_sec) * 10000.0d;
+    double total_sys_milis = (total_sys / ticks_per_sec) * 10000.0d;
+    double total_real_milis = (total_real / ticks_per_sec) * 10000.0d;
 
-    node_1 -> email_address = "max.payne@gmail.com";
-    node_1 -> phone_number = "23423423";
-    node_1 -> name = "Max";
-    node_1 -> surname = "Payne";
+    printf("\n* * * * * * * * * * * * * * * * * * T I ME\tM E A S U R E M E N T* * * * * * * * * * * * * * * * * *");
+    printf("\nTotal time:\n\treal: %5.3lf\n\tusr: %5.3lf ms\n\tsys: %5.3lf ms\n", total_real_milis, total_usr_milis, total_sys_milis);
+    printf("\nSince last measurement:\n\tdelta real: %5.3lf\n\tdelta usr: %5.3lf ms\n\tdelta sys: %5.3f ms\n", total_real_milis - prev_real_milis, total_usr_milis - prev_usr_milis, total_sys_milis - prev_usr_milis);
 
-    //
-
-    node_2 -> address -> building_num = "3423";
-    node_2 -> address -> city = "Warsaw";
-    node_2 -> address -> flat_num = "7";
-    node_2 -> address -> street = "Wspolna";
-    node_2 -> address -> zip_code = "32-300";
-
-    node_2 -> birth_date -> day = 14;
-    node_2 -> birth_date -> month = 2;
-    node_2 -> birth_date -> year = 1966;
-
-    node_2 -> email_address = "buizaczek@motylek.pl";
-    node_2 -> phone_number = "52345276";
-    node_2 -> name = "Alfonso";
-    node_2 -> surname = "Pl";
-
-    //
-
-    node_3 -> address -> building_num = "4A";
-    node_3 -> address -> city = "Krakau";
-    node_3 -> address -> flat_num = "41";
-    node_3 -> address -> street = "Sliczna";
-    node_3 -> address -> zip_code = "31-412";
-
-    node_3 -> birth_date -> day = 24;
-    node_3 -> birth_date -> month = 7;
-    node_3 -> birth_date -> year = 1987;
-
-    node_3 -> email_address = "fire1991@yahoo.com";
-    node_3 -> phone_number = "99342923";
-    node_3 -> name = "Kuba";
-    node_3 -> surname = "Kop";
-
-    //
-
-    node_4 -> address -> building_num = "65";
-    node_4 -> address -> city = "New York";
-    node_4 -> address -> flat_num = "99";
-    node_4 -> address -> street = "Main";
-    node_4 -> address -> zip_code = "54-423";
-
-    node_4 -> birth_date -> day = 30;
-    node_4 -> birth_date -> month = 1;
-    node_4 -> birth_date -> year = 1999;
-
-    node_4 -> email_address = "elo@no.us";
-    node_4 -> phone_number = "6-5465-465463";
-    node_4 -> name = "Nick";
-    node_4 -> surname = "Rock";
-
-    //
-
-    node_5 -> address -> building_num = "22A/5";
-    node_5 -> address -> city = "Lodz";
-    node_5 -> address -> flat_num = "73";
-    node_5 -> address -> street = "Brzydka";
-    node_5 -> address -> zip_code = "00-010";
-
-    node_5 -> birth_date -> day = 27;
-    node_5 -> birth_date -> month = 10;
-    node_5 -> birth_date -> year = 2001;
-
-    node_5 -> email_address = "ll@dd.pl";
-    node_5 -> phone_number = "36346376";
-    node_5 -> name = "Kora";
-    node_5 -> surname = "Rako";
-
-    //
-
-    node_6 -> address -> building_num = "22A/5";
-    node_6 -> address -> city = "Lodz";
-    node_6 -> address -> flat_num = "73";
-    node_6 -> address -> street = "Brzydka";
-    node_6 -> address -> zip_code = "00-010";
-
-    node_6 -> birth_date -> day = 27;
-    node_6 -> birth_date -> month = 10;
-    node_6 -> birth_date -> year = 2001;
-
-    node_6 -> email_address = "ll@dd.pl";
-    node_6 -> phone_number = "36346376";
-    node_6 -> name = "Jakub";
-    node_6 -> surname = "Kmiec";
-
-    //
-
-    node_7 -> address -> building_num = "22A/5";
-    node_7 -> address -> city = "Lodz";
-    node_7 -> address -> flat_num = "73";
-    node_7 -> address -> street = "Brzydka";
-    node_7 -> address -> zip_code = "00-010";
-
-    node_7 -> birth_date -> day = 27;
-    node_7 -> birth_date -> month = 10;
-    node_7 -> birth_date -> year = 2001;
-
-    node_7 -> email_address = "ll@dd.pl";
-    node_7 -> phone_number = "36346376";
-    node_7 -> name = "Amadeusz";
-    node_7 -> surname = "Rako";
-
-    list_t * list = create_list();
-
-    add_elem(list, node_1);
-    add_elem(list, node_2);
-    add_elem(list, node_3);
-    add_elem(list, node_4);
-    add_elem(list, node_5);
-    add_elem(list, node_6);
-    add_elem(list, node_7);
-
-    return list;
+    prev_usr_milis = total_usr_milis;
+    prev_sys_milis = total_sys_milis;
 }

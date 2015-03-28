@@ -17,7 +17,7 @@ void delete_list(list_t *);
 void add_elem(list_t *, list_node_t *);
 void remove_elem(list_t *, list_node_t *);
 
-list_node_t *find_elem_by_full_name(const char *const, const char *const);
+list_node_t *find_elem_by_full_name(list_t *, char *, char *);
 
 void sort_list(list_t *);
 

@@ -45,11 +45,11 @@ int main(int argc, char * argv[]) {
 
     print_time();
 
-    for(i = 0; i < 10000000; ++i) {
+    for(i = 0; i < 5000000; ++i) {
         list_sort(list);
     }
 
-    printf("List sorted 10 000 000 times\n\n");
+    printf("List sorted 5 000 000 times\n\n");
     print_time();
 
     for(i = 0; i < 100000000; ++i) {
@@ -71,16 +71,14 @@ int main(int argc, char * argv[]) {
 void print_time()
 {
     previous = *run_time;
-    long total = times(run_time);
+    times(run_time);
 
     double total_usr = (double) run_time -> tms_utime;
     double total_sys = (double) run_time -> tms_stime;
-    double total_real = total_sys + total_usr;
 
 
     double total_usr_milis = (total_usr / ticks_per_sec) * 10000.0d;
     double total_sys_milis = (total_sys / ticks_per_sec) * 10000.0d;
-    double total_real_milis = (total_real / ticks_per_sec) * 10000.0d;
 
     printf("\tTotal time:  \t\t%4.3lf (+%4.3lf) s\n", total_usr_milis + total_sys_milis, total_usr_milis + total_sys_milis - prev_usr_milis - prev_sys_milis);
     printf("\tUser time:   \t\t%4.3lf (+%4.3lf) s\n", total_usr_milis, total_usr_milis - prev_usr_milis);

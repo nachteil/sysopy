@@ -1,7 +1,6 @@
 #include "main.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include <list_structs.h>
 #include "sys/times.h"
 #include <dlfcn.h>
 
@@ -13,22 +12,43 @@ struct tms previous;
 double prev_usr_milis;
 double prev_sys_milis;
 
+void verify_func(void * fun_ptr)
+{
+    if(!fun_ptr)
+    {
+        printf("Error occured during loading symbol:\n%s", dlerror());
+        exit(17);
+    }
+    return;
+}
+
 int main(int argc, char * argv[]) {
 
     prev_sys_milis = prev_usr_milis = 0.0d;
 
-    void * list_lib_handle = dlopen("/dupa.so.1.0", RTLD_NOW);
+    void * list_lib_handle = dlopen("libshared_main_lib.so", RTLD_NOW);
 
     if(list_lib_handle == NULL) {
         printf("\nERROR: Couldn't load library. Error message:\n%s\n", dlerror());
     }
 
     void (*verify_not_null)(void *)               = dlsym(list_lib_handle, "verify_not_null");
+    verify_func(verify_not_null);
+
     list_t* (*create_sample_list)(void)         = dlsym(list_lib_handle, "create_sample_list");
+    verify_func(create_sample_list);
+
     void (*add_elem)(list_t *, list_node_t*)    = dlsym(list_lib_handle, "add_elem");
+    verify_func(add_elem);
+
     void (*delete_list)(list_t *)               = dlsym(list_lib_handle, "delete_list");
+    verify_func(delete_list);
+
     void (*list_sort)(list_t *)                 = dlsym(list_lib_handle, "list_sort");
+    verify_func(list_sort);
+
     list_node_t* (*find_elem_by_full_name)(list_t *, char *, char *) = dlsym(list_lib_handle, "find_elem_by_full_name");
+    verify_func(find_elem_by_full_name);
 
     printf("Program started. Clocks per second: %ld\n\n", ticks_per_sec);
 
@@ -59,11 +79,11 @@ int main(int argc, char * argv[]) {
 
     print_time();
 
-    for(i = 0; i < 10000000; ++i) {
+    for(i = 0; i < 5000000; ++i) {
         list_sort(list);
     }
 
-    printf("List sorted 10 000 000 times\n\n");
+    printf("List sorted 5 000 000 times\n\n");
     print_time();
 
     for(i = 0; i < 100000000; ++i) {
@@ -85,16 +105,14 @@ int main(int argc, char * argv[]) {
 void print_time()
 {
     previous = *run_time;
-    long total = times(run_time);
+    times(run_time);
 
     double total_usr = (double) run_time -> tms_utime;
     double total_sys = (double) run_time -> tms_stime;
-    double total_real = total_sys + total_usr;
 
 
     double total_usr_milis = (total_usr / ticks_per_sec) * 10000.0d;
     double total_sys_milis = (total_sys / ticks_per_sec) * 10000.0d;
-    double total_real_milis = (total_real / ticks_per_sec) * 10000.0d;
 
     printf("\tTotal time:  \t\t%4.3lf (+%4.3lf) s\n", total_usr_milis + total_sys_milis, total_usr_milis + total_sys_milis - prev_usr_milis - prev_sys_milis);
     printf("\tUser time:   \t\t%4.3lf (+%4.3lf) s\n", total_usr_milis, total_usr_milis - prev_usr_milis);

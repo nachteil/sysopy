@@ -1,8 +1,9 @@
 #include "main.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include "utils.h"
+#include <list_structs.h>
 #include "sys/times.h"
+#include <dlfcn.h>
 
 static long int ticks_per_sec = CLOCKS_PER_SEC;
 
@@ -15,6 +16,19 @@ double prev_sys_milis;
 int main(int argc, char * argv[]) {
 
     prev_sys_milis = prev_usr_milis = 0.0d;
+
+    void * list_lib_handle = dlopen("/dupa.so.1.0", RTLD_NOW);
+
+    if(list_lib_handle == NULL) {
+        printf("\nERROR: Couldn't load library. Error message:\n%s\n", dlerror());
+    }
+
+    void (*verify_not_null)(void *)               = dlsym(list_lib_handle, "verify_not_null");
+    list_t* (*create_sample_list)(void)         = dlsym(list_lib_handle, "create_sample_list");
+    void (*add_elem)(list_t *, list_node_t*)    = dlsym(list_lib_handle, "add_elem");
+    void (*delete_list)(list_t *)               = dlsym(list_lib_handle, "delete_list");
+    void (*list_sort)(list_t *)                 = dlsym(list_lib_handle, "list_sort");
+    list_node_t* (*find_elem_by_full_name)(list_t *, char *, char *) = dlsym(list_lib_handle, "find_elem_by_full_name");
 
     printf("Program started. Clocks per second: %ld\n\n", ticks_per_sec);
 

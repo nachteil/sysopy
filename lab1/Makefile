@@ -3,14 +3,21 @@ CC=gcc
 CFLAGS=-c -Wall
 OBJ_DIR=obj
 SRC_DIR=src
+LIB_DIR=lib
 
-all: dirs run_static
+all: dirs run_static run_shared run_dynamic
 
 run_static: make_static
+	echo -e "Running statically linked program:\n"
 	./obj/main
 
-run_dynamic_1: make_dynamic
+run_shared: make_shared
+	echo -e "Running program linked with shared library:\n"
 	./obj/main
+
+run_dynamic: make_dynamic
+	echo -e "Running dynamically linked program:\n"
+	./obj/main_dynamic
 
 dirs:
 	if [ ! -d obj ]; then mkdir obj; fi
@@ -23,21 +30,27 @@ lib_static: list_funs.o list_structs.o utils.o
 	ar crs static_main_lib.a $(OBJ_DIR)/list_funs.o $(OBJ_DIR)/list_structs.o $(OBJ_DIR)/utils.o
 	mv static_main_lib.a ./lib
 
-lib_dynamic:
-	$(CC) -fPIC $(CFLAGS) ./$(SRC_DIR)/list_funs.c -o $(OBJ_DIR)/list_funs.o
-	$(CC) -fPIC $(CFLAGS) ./$(SRC_DIR)/list_structs.c -o $(OBJ_DIR)/list_structs.o
-	$(CC) -fPIC $(CFLAGS) ./$(SRC_DIR)/utils.c -o $(OBJ_DIR)/utils.o
-	$(CC) –shared –fPIC –o ./lib/libdynamic_main_lib.so $(OBJ_DIR)/utils.o $(OBJ_DIR)/list_structs.o $(OBJ_DIR)/list_funs.o
+lib_shared:
+	$(CC) -Werror -fPIC $(CFLAGS) ./$(SRC_DIR)/list_funs.c -o $(OBJ_DIR)/list_funs.o
+	$(CC) -Werror -fPIC $(CFLAGS) ./$(SRC_DIR)/list_structs.c -o $(OBJ_DIR)/list_structs.o
+	$(CC) -Werror -fPIC $(CFLAGS) ./$(SRC_DIR)/utils.c -o $(OBJ_DIR)/utils.o
+	$(CC) -Werror -fPIC -shared -o ./$(LIB_DIR)/libshared_main_lib.so $(OBJ_DIR)/utils.o $(OBJ_DIR)/list_structs.o $(OBJ_DIR)/list_funs.o
 
-make_dynamic: lib_dynamic
-	$(CC) $(CFLAGS) $(SRC_DIR)/main.c -o $(OBJ_DIR)/main -L./lib -ldynamic_main_lib
+make_shared: lib_shared
+	$(CC) -Wall $(SRC_DIR)/main.c -o $(OBJ_DIR)/main -L./lib  -Wl,-rpath=lib -lshared_main_lib
 	chmod +x $(OBJ_DIR)/main
 
 make_static: lib_static main.o
-	$(CC) $(OBJ_DIR)/main.o ./lib/static_main_lib.a -o $(OBJ_DIR)/main
+	$(CC) $(OBJ_DIR)/main.o ./$(LIB_DIR)/static_main_lib.a -o $(OBJ_DIR)/main
+
+make_dynamic: lib_shared main_dynamic.o
+	$(CC) -Wall -L./lib ./$(OBJ_DIR)/main_dynamic.o -lshared_main_lib -o ./$(OBJ_DIR)/main_dynamic
 
 main.o: $(SRC_DIR)/main.c
 	$(CC) $(CFLAGS) $(SRC_DIR)/main.c -o $(OBJ_DIR)/main.o
+
+main_dynamic.o: $(SRC_DIR)/main_dynamic.c
+	$(CC) $(CFLAGS) $(SRC_DIR)/main.c -o $(OBJ_DIR)/main_dynamic.o
 
 list_funs.o: $(SRC_DIR)/list_funs.c
 	$(CC) $(CFLAGS) $(SRC_DIR)/list_funs.c -o $(OBJ_DIR)/list_funs.o
@@ -49,4 +62,5 @@ utils.o: $(SRC_DIR)/utils.c
 	$(CC) $(CFLAGS) $(SRC_DIR)/utils.c -o $(OBJ_DIR)/utils.o
 
 clean:
-	rm ./$(OBJ_DIR)/*.o ./$(OBJ_DIR)/main ./lib/*
+	rm -rf $(OBJ_DIR)
+	rm -rf $(LIB_DIR)

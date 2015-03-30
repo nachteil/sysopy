@@ -1,0 +1,174 @@
+Running configuration
+	Record size: 4 B
+	Number of records: 6000
+	File operations library: C's STDIO
+
+Results:
+	User time: 4.940 s, Sys time: 16.870 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 4 B
+	Number of records: 6000
+	File operations library: Unix IO
+
+Results:
+	User time: 2.530 s, Sys time: 17.730 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 4 B
+	Number of records: 12000
+	File operations library: C's STDIO
+
+Results:
+	User time: 20.210 s, Sys time: 64.120 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 4 B
+	Number of records: 12000
+	File operations library: Unix IO
+
+Results:
+	User time: 10.140 s, Sys time: 71.090 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 512 B
+	Number of records: 2000
+	File operations library: C's STDIO
+
+Results:
+	User time: 0.760 s, Sys time: 1.970 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 512 B
+	Number of records: 2000
+	File operations library: Unix IO
+
+Results:
+	User time: 0.280 s, Sys time: 2.100 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 512 B
+	Number of records: 10000
+	File operations library: C's STDIO
+
+Results:
+	User time: 16.900 s, Sys time: 48.440 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 512 B
+	Number of records: 10000
+	File operations library: Unix IO
+
+Results:
+	User time: 8.060 s, Sys time: 51.700 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 4096 B
+	Number of records: 2000
+	File operations library: C's STDIO
+
+Results:
+	User time: 0.670 s, Sys time: 2.670 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 4096 B
+	Number of records: 2000
+	File operations library: Unix IO
+
+Results:
+	User time: 0.320 s, Sys time: 2.700 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 4096 B
+	Number of records: 10000
+	File operations library: C's STDIO
+
+Results:
+	User time: 15.070 s, Sys time: 74.660 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 4096 B
+	Number of records: 10000
+	File operations library: Unix IO
+
+Results:
+	User time: 8.720 s, Sys time: 75.200 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 8192 B
+	Number of records: 2000
+	File operations library: C's STDIO
+
+Results:
+	User time: 0.600 s, Sys time: 5.050 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 8192 B
+	Number of records: 2000
+	File operations library: Unix IO
+
+Results:
+	User time: 0.360 s, Sys time: 4.960 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 8192 B
+	Number of records: 10000
+	File operations library: C's STDIO
+
+Results:
+	User time: 15.610 s, Sys time: 133.320 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
+
+Running configuration
+	Record size: 8192 B
+	Number of records: 10000
+	File operations library: Unix IO
+
+Results:
+	User time: 8.530 s, Sys time: 133.800 s
+
+* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

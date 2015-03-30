@@ -1,7 +1,3 @@
-//
-// Created by yorg on 17.03.15.
-//
-// TODO: zliczyc liczbe przestawien
 #include "records_generator.h"
 #include "stdio.h"
 #include "stdlib.h"
@@ -9,6 +5,8 @@
 
 #define ERROR_EXIT_CODE 1
 #define EXPECTED_NUMBER_OF_ARGUMENTS 3
+
+// TODO: zliczyc liczbe przestawien
 
 void usage() {
 
@@ -37,7 +35,7 @@ void write_records(FILE *file_handler, int rec_size, int num_rec) {
 }
 
 void print_error_message(const char const * msg) {
-    printf(msg);
+    printf("%s\n", msg);
 }
 
 int main(int argc, char * argv[])

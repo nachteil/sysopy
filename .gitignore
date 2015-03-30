@@ -6,6 +6,8 @@
 *.obj
 *.elf
 
+*.bin
+
 # Precompiled Headers
 *.gch
 *.pch
@@ -34,7 +36,7 @@
 bin/
 obj/
 lib/
-
+lab2/run/
 ### JetBrains template
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm
 

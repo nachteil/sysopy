@@ -8,6 +8,9 @@
 #include <sys/types.h>
 #include <fcntl.h>
 #include <libexplain/fcntl.h>
+#include <sys/wait.h>
+#include <sched.h>
+
 
 #define STRDLCK "set_read_lock"
 #define STWRLCK "set_write_lock"
@@ -46,7 +49,7 @@ int main(int argc, char * argv[]) {
 
     strcpy(file_path, argv[1]);
 
-    int sys_file_descr = -1;
+    sys_file_descriptor = -1;
     if((sys_file_descriptor = open(argv[1], O_RDWR)) == -1) {
         printf("The file %s could not have been opened\n", argv[1]);
         exit(1);
@@ -61,16 +64,15 @@ int main(int argc, char * argv[]) {
     printf("\t%s n\n", RDCAHR);
     printf("\t%s n\n", WRTCHR);
     printf("\t%s\n", PRTLCKS);
-    printf("\t Enter 'exit' (no quotes) to exit\n");
+    printf("\tEnter 'exit' (no quotes) to exit\n");
 
     char input[256];
 
     while(1) {
         printf("> ");
-        gets(input);
+        fgets(input, 255, stdin);
         command *cmd = parse(input);
         if(cmd == NULL) continue;
-        printf("DEBUG: %s %d (%d)\n", cmd ->cmd, cmd -> num, cmd -> cmd_index);
         try_lock(cmd);
     }
 }
@@ -82,22 +84,24 @@ command *parse(char * input) {
         exit(0);
     }
 
-    int len = strlen(input);
-    int c = len-1;
-    while((c >= 0) && (input[c] == ' ' || input[c] == '\t')) {
-        input[c] = 0;
-        --c;
+    // remove newline and spaces at the end
+    int c = strlen(input) - 1;
+    input[c--] = 0;
+    while(c >= 0) {
+        if(input[c] == ' ' || input[c] == '\t') {
+            input[c--] = 0;
+        } else {
+            break;
+        }
     }
 
-    len = strlen(input);
-    if(len < 11) {
-        printf("dupa\n");
-        return NULL;
-    }
+    int start_index = 0;
+    while(input[start_index] == ' ' || input[start_index] == '\t') ++start_index;
 
     int num_spaces = 0;
-    int space_index = 0;
-    c = 0;
+    c = start_index;
+    int len = strlen(input);
+    int space_index = -1;
     while(c < len) {
         if(input[c++] == ' ') {
             ++num_spaces;
@@ -105,42 +109,75 @@ command *parse(char * input) {
         }
     }
 
-    char * cmd;
-    if((cmd = malloc(space_index + 1)) == NULL) {
-        printf("Memory allocation error during parsing\n");
-        exit(1);
+    if(num_spaces > 1) {
+        printf("Wrong input format\n");
+        return NULL;
+    }
+
+    char *cmd = malloc(space_index + 1);
+    if(cmd == NULL) {
+        printf("Memory allocation error\n");
+        return NULL;
     }
 
     c = 0;
-    while(c < space_index) {
-        cmd[c] = input[c++];
+    while(c < (num_spaces != 0 ? space_index : len)) {
+        cmd[c] = input[start_index + c];
+        ++c;
     }
-    cmd[c] = 0;
 
     int cmd_index;
-
     if(!strcmp(STRDLCK, cmd)) {
+        if(num_spaces != 1) {
+            printf("Wrong input format\n");
+            return NULL;
+        }
         cmd_index = STRDLCK_IND;
     } else if (!strcmp(STWRLCK,cmd)) {
+        if(num_spaces != 1) {
+            printf("Wrong input format\n");
+            return NULL;
+        }
         cmd_index = STWRLCK_IND;
     } else if (!strcmp(PRTLCKS,cmd)) {
+        if(num_spaces != 0) {
+            printf("Wrong input format\n");
+            return NULL;
+        }
         cmd_index = PRTLCKS_IND;
     } else if (!strcmp(FRELCK,cmd)) {
+        if(num_spaces != 1) {
+            printf("Wrong input format\n");
+            return NULL;
+        }
         cmd_index = FRELCK_IND;
     } else if (!strcmp(RDCAHR,cmd)) {
+        if(num_spaces != 1) {
+            printf("Wrong input format\n");
+            return NULL;
+        }
         cmd_index = RDCAHR_IND;
     } else if (!strcmp(WRTCHR,cmd)) {
+        if(num_spaces != 1) {
+            printf("Wrong input format\n");
+            return NULL;
+        }
         cmd_index = WRTCHR_IND;
     } else {
         printf("Unknown command: %s\n", cmd);
         return NULL;
     }
 
-    int num = atoi(&input[space_index+1]);
+    int num;
+    if(num_spaces == 1) {
+        num = atoi(&input[space_index+1]);
+    } else {
+        num = 0;
+    }
 
     command * cm;
     if((cm = malloc(sizeof(command))) == NULL) {
-        printf("Memory allocation error 116\n");
+        printf("Memory allocation error\n");
         exit(1);
     }
 
@@ -159,10 +196,8 @@ void try_lock(command * cmd) {
         exit(1);
     }
 
-    printf("Entered with index: %d\n", cmd -> cmd_index);
-
     short flock_ltype;
-
+    int fork_id;
     switch (cmd -> cmd_index) {
         case STRDLCK_IND:
             flock_ltype = F_RDLCK;
@@ -171,7 +206,16 @@ void try_lock(command * cmd) {
             flock_ltype = F_WRLCK;
             break;
         case PRTLCKS_IND:
-            print_locks();
+            fork_id = fork();
+            // use forks to include locks owned by parent process
+            if(fork_id == 0) // executed in child process
+            {
+                print_locks();
+                _exit(0);
+            } else // executed in parent process
+            {
+                waitpid(fork_id, NULL, 0);
+            }
             return;
         case FRELCK_IND:
             flock_ltype = F_WRLCK;
@@ -191,23 +235,23 @@ void try_lock(command * cmd) {
     check_lock -> l_pid = getpid();
 
     if(fcntl(sys_file_descriptor, F_GETLK, check_lock) == -1) {
-//        const char  *msg = explain_fcntl(sys_file_descriptor, F_GETLK, (long) check_lock);
-        printf("Error occured during checking lock 193:\n%s\n", file_path);
+        printf("Error occured during checking lock:\n%s\n", file_path);
         return;
     }
 
     if(check_lock -> l_type != F_UNLCK) {
 
-        printf("Cannot acquire lock, because it is owned. Info:\n");
+        printf("Cannot perform this operation on lock, because it is owned. Info:\n");
         print_lock_info(check_lock);
 
-        exit(1);
-    } else {
-        printf("Debug: I can acquire that lock!\n");
+        return;
     }
 
     struct flock *get_lock = check_lock;
     check_lock = NULL;
+    int bytes_read;
+    char byte_buf;
+    char double_buf[2];
 
     switch (cmd -> cmd_index) {
 
@@ -219,15 +263,12 @@ void try_lock(command * cmd) {
             get_lock -> l_whence = SEEK_SET;
             get_lock -> l_len = 1;
             get_lock -> l_pid = getpid();
-            printf("Try to acquire read lock\n");
-            int e;
-            if((e = fcntl(sys_file_descriptor, F_SETLK, get_lock)) == -1) {
-                printf("Err: %d\n", e);
+            if(fcntl(sys_file_descriptor, F_SETLK, get_lock) == -1) {
                 printf("Error occured during acquiring lock 218\n");
                 print_lock_info(get_lock);
                 return;
             }
-            printf("Succeeded\n");
+            printf("Successfully acquired read lock\n");
             break;
 
         // try to acquire write lock
@@ -237,37 +278,68 @@ void try_lock(command * cmd) {
             get_lock -> l_start = cmd -> num;
             get_lock -> l_whence = SEEK_SET;
             get_lock -> l_len = 1;
-            if(fcntl(sys_file_descriptor, F_GETLK, check_lock) == -1) {
-                printf("Error occured during acquiring  lock 231\n");
+            get_lock -> l_pid = getpid();
+            if(fcntl(sys_file_descriptor, F_SETLK, get_lock) == -1) {
+                printf("Error occured during acquiring  lock\n");
                 return;
             }
+            printf("Successfully acquired write lock\n");
             break;
-
-        // print locks for this file
-        case PRTLCKS_IND:
-            print_locks();
-            return;
 
         // free lock
         case FRELCK_IND:
-            flock_ltype = F_WRLCK;
+
+            get_lock -> l_type = F_UNLCK;
+            get_lock -> l_start = cmd -> num;
+            get_lock -> l_whence = SEEK_SET;
+            get_lock -> l_len = 1;
+            get_lock -> l_pid = getpid();
+            if(fcntl(sys_file_descriptor, F_SETLK, get_lock) == -1) {
+                printf("Error occured during acquiring  lock\n");
+                return;
+            }
+            printf("Successfully released lock\n");
             break;
 
         // read character from this file
         case RDCAHR_IND:
-            flock_ltype = F_RDLCK;
+
+            if(lseek(sys_file_descriptor, cmd -> num, SEEK_SET) == -1)
+            {
+                printf("File access error.\n");
+                return;
+            }
+            bytes_read = read(sys_file_descriptor, &byte_buf, 1);
+            if(bytes_read != 1) {
+                printf("File read error\n");
+                return;
+            }
+            printf("Readed character: %c\n", byte_buf);
             break;
 
         // write character to this file
         case WRTCHR_IND:
-            flock_ltype = F_WRLCK;
+
+            if(lseek(sys_file_descriptor, cmd -> num, SEEK_SET) == -1) {
+                printf("File access error.\n");
+                return;
+            }
+
+            printf("Enter the character to place at position %d:\n", cmd -> num);
+            fgets(double_buf, 2, stdin);
+
+            if(write(sys_file_descriptor, &double_buf[0], 1) == -1) {
+                printf("File write error.\n");
+                return;
+            }
+
+            printf("Successfully writen '%c' at index %d\n", double_buf[0], cmd -> num);
             break;
     }
 }
 
 void print_locks() {
 
-    printf("Entered print locks...\n");
 
     struct flock *check_lock;
     if((check_lock = malloc(sizeof(struct flock))) == NULL) {
@@ -279,7 +351,7 @@ void print_locks() {
     if(lstat(file_path, &stat_buf) != 0) {
         printf("Something went wrong during reading %s's attributes, exit now\n", file_path);
         exit(1);
-    } else printf("Readed lstat\n");
+    }
 
     int file_size = (int) stat_buf.st_size;
     int counter = 0;
@@ -289,19 +361,17 @@ void print_locks() {
     // iterate over each single byte and print lock info (if any)
     for(counter = 0; counter < file_size; ++counter) {
 
-        printf("print locks iterator %d/%d\n", counter+1, file_size);
-
         check_lock -> l_type = F_WRLCK;
         check_lock -> l_start = counter;
         check_lock -> l_whence = SEEK_SET;
         check_lock -> l_len = 1;
+        check_lock -> l_pid = getpid();
         if(fcntl(sys_file_descriptor, F_GETLK, check_lock) == -1) {
-            printf("Error occured during checking lock 285\n");
+            printf("Error occured during checking lock\n");
             return;
         }
-
         if(check_lock -> l_type != F_UNLCK) {
-            printf("%d Lock found:\n", ++num_locks_printed);
+            printf("%d.found lock:\n", ++num_locks_printed);
             print_lock_info(check_lock);
         }
     }
@@ -341,10 +411,10 @@ void print_lock_info(struct flock * lock) {
             break;
     }
 
-    printf("\tl_type: %s\n", ctype);
-    printf("\tl_start: %ld\n", lock -> l_start);
-    printf("\tl_whence: %s\n", cwhence);
-    printf("\tl_len: %ld\n", lock -> l_len);
-    printf("\tl_pid: %d\n\n", lock -> l_pid);
+    printf("\tl_type:     %s\n", ctype);
+    printf("\tl_start:    %ld\n", lock -> l_start);
+    printf("\tl_whence:   %s\n", cwhence);
+    printf("\tl_len:      %ld\n", lock -> l_len);
+    printf("\tl_pid:      %d\n\n", lock -> l_pid);
 
 }

@@ -49,6 +49,7 @@ int main(int argc, char * argv[]) {
 
     traverse_recursively();
 
+    return 0;
 }
 
 

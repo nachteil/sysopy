@@ -4,6 +4,7 @@
 #include "stdio.h"
 #include "unistd.h"
 #include "sys/types.h"
+#include "sys/wait.h"
 #include "sys/stat.h"
 #include <dirent.h>
 #include "string.h"
@@ -33,7 +34,7 @@ int main(int argc, char * argv[]) {
 
     if((pid = fork()) < 0) {
         printf("fork error\n");
-    } else if (pid > 0) {   // parent process
+    } else if (pid > 0) {   // parent process [ls -l]
         close(fd[0]);
 
         DIR * basedir;
@@ -42,6 +43,13 @@ int main(int argc, char * argv[]) {
         }
 
         struct dirent *dir_entry;
+//        FILE *out = fdopen(fd[1], "w");
+//
+//        if(!out) {
+//            printf("File open error\n");
+//            exit(-1);
+//        }
+
         while((dir_entry = readdir(basedir)) != NULL) {
 
             char * curr_file_name = dir_entry -> d_name;
@@ -56,7 +64,7 @@ int main(int argc, char * argv[]) {
             }
 
             char *access = get_access(&stat_buf);
-            printf("%s %s\n", access, curr_file_name);
+//            printf("%s %s\n", access, curr_file_name);
             cwd[--path_len] = 0;
 
             char *line = (char*) malloc(1024*sizeof(char));
@@ -75,22 +83,95 @@ int main(int argc, char * argv[]) {
             line[len] = '\n';
             line[len+1] = 0;
 
-            write(fd[1], access, len+2);
+//            printf("ls part: %s", line);
+//            fprintf(out, "%s", line);
+            write(fd[1], line, strlen(line));
         }
 
-        close(fd[1]);
+        int status;
+        close(fd[1]); // will cause the child to go out of the loop
+
+        wait(&status);
+        if(WEXITSTATUS(status) != 0) {
+            exit(WEXITSTATUS(status));
+        }
         exit(0);
 
-    } else if (pid == 0) {  // child process
-        close(fd[1]);
-        char *line = (char*) malloc(512);
-        if(line == NULL) {
-            printf("allocation error\n");
+    } else if (pid == 0) {  // child process [ grep ^d | wc -l ]
+
+           close(fd[1]);
+
+           int sub_fd[2];
+           if(pipe(sub_fd) < 0) {
+               printf("Pipe error\n");
+               exit(-1);
+           }
+
+        if((pid = fork()) < 0) {
+            printf("Forking error\n");
+            exit(-1);
+        } else if (pid > 0) {   // parent process [grep ^d]
+
+            close(sub_fd[0]);
+            char *line = (char*) malloc(1024);
+            if(line == NULL) {
+                printf("allocation error\n");
+            }
+
+            FILE *in = fdopen(fd[0], "r");
+            FILE *out = fdopen(sub_fd[1], "w");
+
+            if(!in || !out) {
+                printf("Cannot open file descriptor\n");
+                exit(1);
+            }
+
+            while(fgets(line, 1024, in)) {
+                fprintf(out, "%s", "got line\n");
+//                write(sub_fd[1], line, strlen(line));
+            }
+
+            close(sub_fd[1]);
+            close(fd[0]);
+
+            fclose(in);
+            fclose(out);
+
+            int status;
+            wait(&status);
+            if(WEXITSTATUS(status) != 0) {
+                exit(WEXITSTATUS(status));
+            }
+
+            exit(0);
+
+        } else {                // child process [wc -l]
+
+            close(sub_fd[1]);
+
+            char * wc_line = (char*) malloc(1024);
+            if(!wc_line) {
+                printf("Memory allocation error\n");
+                exit(-1);
+            }
+
+            FILE *in = fdopen(sub_fd[0], "r");
+
+            if(!in) {
+                printf("Cannot open file descriptor\n");
+                exit(-1);
+            }
+
+            int num_lines = 0;
+            while(fgets(wc_line, 1024, in)) {
+                ++num_lines;
+            }
+
+            printf("%d\n", num_lines);
+            close(sub_fd[0]);
         }
 
-        while(read(fd[0], line, 512)) {
-            printf("%s\n", line);
-        }
+
 
         close(fd[0]);
         exit(0);

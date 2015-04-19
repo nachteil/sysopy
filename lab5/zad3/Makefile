@@ -5,11 +5,16 @@ OBJ_DIR=obj
 RUN_DIR=run
 BIN_DIR=bin
 
-main: dirs main.o
-	$(CC) -Wall -o $(BIN_DIR)/main $(OBJ_DIR)/main.o
+all: main
+
+main: dirs main.o common.o
+	$(CC) -Wall -o $(BIN_DIR)/main $(OBJ_DIR)/main.o $(OBJ_DIR)/common.o
 
 main.o: $(SRC_DIR)/main.c $(SRC_DIR)/main.h
 	$(CC) $(CC_FLAGS) -o $(OBJ_DIR)/main.o $(SRC_DIR)/main.c
+	
+common.o: $(SRC_DIR)/common.c $(SRC_DIR)/common.h
+	$(CC) $(CC_FLAGS) -o $(OBJ_DIR)/common.o $(SRC_DIR)/common.c
 
 dirs:
 	if [ ! -d $(OBJ_DIR) ]; then mkdir $(OBJ_DIR); fi

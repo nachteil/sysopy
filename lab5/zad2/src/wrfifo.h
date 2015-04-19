@@ -1,0 +1,5 @@
+#ifndef SYSOPY_WRFIFO_H
+#define SYSOPY_WRFIFO_H
+
+
+#endif //SYSOPY_WRFIFO_H

@@ -9,6 +9,7 @@
 int counter = 0;
 int flag = 0;
 int double_flag = 0;
+int confirmation = 0;
 
 pid_t child_pid;
 
@@ -20,13 +21,28 @@ int main(int argc, char * argv[]) {
     }
 
     sigset_t zero_mask;
+    sigset_t usr_mask;
+
     sigemptyset(&zero_mask);
 
-    if(signal(SIGUSR1, sig_handle_sender) == SIG_ERR) {
-        error("Can't catch SIGUSR1");
+    sigemptyset(&usr_mask);
+    sigaddset(&usr_mask, SIGUSR1);
+    sigaddset(&usr_mask, SIGUSR2);
+
+    struct sigaction new_act_usr1;
+    struct sigaction new_act_usr2;
+
+    new_act_usr1.sa_handler = sig_handle_sender;
+    new_act_usr2.sa_handler = sig_handle_sender;
+
+    new_act_usr1.sa_mask = usr_mask;
+    new_act_usr2.sa_mask = usr_mask;
+
+    if(sigaction(SIGUSR1, &new_act_usr1, NULL) < 0) {
+        error("Sigaction error for SIGUSR1");
     }
-    if(signal(SIGUSR2, sig_handle_sender) == SIG_ERR) {
-        error("Can't catch SIGUSR2");
+    if(sigaction(SIGUSR2, &new_act_usr2, NULL) < 0) {
+        error("Sigaction error for SIGUSR2");
     }
 
     int num_signals;
@@ -40,55 +56,53 @@ int main(int argc, char * argv[]) {
     // child process
     } else if (pid == 0) {
         printf("Child - after fork, calling exec\n");
-        fflush(stdout);
         execl("./bin/child", "child", NULL);
         error("Should not get here after exec!");
     }
     // parent process - just carry on
 
-    printf("Parent - after fork\n");
-    fflush(stdout);
     child_pid = pid;
 
     // wait for child to confirm ready
     flag = 0;
-    printf("Parent - wait for child\n");
-    fflush(stdout);
     while(!flag) {
-        sigsuspend(&zero_mask);
+        pause();
     }
     flag = 0;
 
-    printf("Parent - child confirmed ready\n");
-    fflush(stdout);
-
     for(int i = 0; i < num_signals; ++i) {
         kill(pid, SIGUSR1);
-        sigsuspend(&zero_mask);
+        while(!confirmation) {
+            pause();
+        }
+        confirmation = 0;
     }
 
     // switch handlers to receivers and go to receive mode
-    signal(SIGUSR1, sig_handle_receiver);
-    signal(SIGUSR2, sig_handle_receiver);
+    new_act_usr1.sa_handler = sig_handle_receiver;
+    new_act_usr2.sa_handler = sig_handle_receiver;
+
+    if(sigaction(SIGUSR1, &new_act_usr1, NULL) < 0) {
+        error("Sigaction error for SIGUSR1");
+    }
+    if(sigaction(SIGUSR2, &new_act_usr2, NULL) < 0) {
+        error("Sigaction error for SIGUSR1");
+    }
     kill(pid, SIGUSR2);
 
     while(!flag) {
-        sigsuspend(&zero_mask);
+        pause();
     }
 
-    printf("Received back %d out of %d signals\n", counter, num_signals);
+    printf("Parent - received back %d out of %d signals\n", counter, num_signals);
 }
 
 void sig_handle_sender(int signo) {
 
-    signal(SIGUSR1, sig_handle_sender);
-    signal(SIGUSR2, sig_handle_sender);
-
     if(signo == SIGUSR1) {
-        // just ignore
+        confirmation = 1;
     } else if (signo == SIGUSR2){
         flag = 1;
-        printf("Parent - signal2\n");
     } else {
         error("Unexpected signal");
     }
@@ -96,16 +110,9 @@ void sig_handle_sender(int signo) {
 
 void sig_handle_receiver(int signo) {
 
-    signal(SIGUSR1, sig_handle_receiver);
-    signal(SIGUSR2, sig_handle_receiver);
-
     if(signo == SIGUSR1) {
-        printf("Parent - got signal\n");
-        fflush(stdout);
         ++counter;
         kill(child_pid, SIGUSR1);
-        printf("Parent - sent confirmation\n");
-        fflush(stdout);
     } else if (signo == SIGUSR2) {
         flag = 1;
     } else {

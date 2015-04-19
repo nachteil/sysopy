@@ -6,6 +6,7 @@
 
 static int counter;
 static int proceed;
+static int confirmation = 0;
 
 int main(int argc, char *argv[]) {
 
@@ -18,36 +19,47 @@ int main(int argc, char *argv[]) {
     sigset_t zero_mask;
     sigemptyset(&zero_mask);
 
-    if(signal(SIGUSR1, sig_handle) == SIG_ERR) {
-        error("Cannot catch SIGUSR1");
+    sigset_t usr_mask;
+    sigemptyset(&usr_mask);
+    sigaddset(&usr_mask, SIGUSR1);
+    sigaddset(&usr_mask, SIGUSR2);
+
+    struct sigaction new_act_usr1;
+    struct sigaction new_act_usr2;
+
+    new_act_usr1.sa_handler = sig_handle;
+    new_act_usr2.sa_handler = sig_handle;
+
+    new_act_usr1.sa_mask = usr_mask;
+    new_act_usr2.sa_mask = usr_mask;
+
+    if(sigaction(SIGUSR1, &new_act_usr1, NULL) < 0) {
+        error("Sigaction error for SIGUSR1");
     }
-    if(signal(SIGUSR2, sig_handle) == SIG_ERR) {
-        error("Cannot catch SIGUSR2");
+    if(sigaction(SIGUSR2, &new_act_usr2, NULL) < 0) {
+        error("Sigaction error for SIGUSR2");
     }
 
     // everything's ready - we can start. Inform parent.
-    printf("Inform parent I'm ready\n");
-    fflush(stdout);
     kill(getppid(), SIGUSR2);
 
     while(!proceed) {
-        sigsuspend(&zero_mask);
+        pause();
     }
 
     printf("Child: received %d signals in total\n", counter);
     pid_t ppid = getppid();
-    if(signal(SIGUSR1, sig_handle_sender) == SIG_ERR) {
+    if(signal(SIGUSR1, &sig_handle_sender) == SIG_ERR) {
         error("Cannot catch SIGUSR1");
     }
 
     // resend signals
     for(int i = 0; i < counter; ++i) {
-        printf("Child - send signal %d\n", i+1);
-        fflush(stdout);
         kill(ppid, SIGUSR1);
-        sigsuspend(&zero_mask);
-        printf("Child - got confirmation\n");
-        fflush(stdout);
+        while(!confirmation) {
+            pause();
+        }
+        confirmation = 0;
     }
     kill(ppid, SIGUSR2);
 
@@ -55,8 +67,6 @@ int main(int argc, char *argv[]) {
 }
 
 void sig_handle(int signo) {
-
-    signal(SIGUSR1, sig_handle);
 
     if(signo == SIGUSR1) {
         ++counter;
@@ -70,10 +80,8 @@ void sig_handle(int signo) {
 
 void sig_handle_sender(int signo) {
 
-    signal(SIGUSR1, sig_handle_sender);
-
     if(signo == SIGUSR1) {
-        // ignore, it's just confirmation
+        confirmation = 1;
     } else {
         error("Wrong signal");
     }

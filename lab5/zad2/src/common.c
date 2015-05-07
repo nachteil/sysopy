@@ -6,10 +6,8 @@
 
 void error(char *str) {
 
-    printf("%s, errno %d\n", str, errno);
-    printf("%s\n", strerror(errno));
-
-    exit(errno);
+    printf("%s\n", str);
+    exit(-1);
 }
 
 void mem_error() {

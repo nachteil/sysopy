@@ -27,3 +27,8 @@ common.o: $(SRC_DIR)/common.c $(SRC_DIR)/common.h
 dirs:
 	if [ ! -d $(OBJ_DIR) ]; then mkdir $(OBJ_DIR); fi
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
+
+
+clean:
+	if [ -d $(OBJ_DIR) ]; then rm -rf $(OBJ_DIR); fi
+	if [ -d $(BIN_DIR) ]; then rm -rf $(BIN_DIR); fi

@@ -42,3 +42,4 @@ dirs:
 clean:
 	if [ -d $(OBJ_DIR) ]; then rm -rf $(OBJ_DIR); fi
 	if [ -d $(BIN_DIR) ]; then rm -rf $(BIN_DIR); fi
+	ipcs -s | tail -n+4 | awk -F' ' '{ print $1 }' | xargs -r -L 1 ipcrm -S

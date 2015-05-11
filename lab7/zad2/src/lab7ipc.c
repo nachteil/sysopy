@@ -4,16 +4,21 @@
 #include "stdio.h"
 #include "signal.h"
 #include "common.h"
+#include "sys/mman.h"
+#include "unistd.h"
+#include "sys/stat.h"
+#include "semaphore.h"
+#include "fcntl.h"
 
-int shared_memory_id;
+int shared_memory_fd;
 void *shm_ptr;
 
 sem_t *mutex_semaphore;
 sem_t *put_semaphore;
 sem_t *get_semaphore;
 
-void down(int);
-void up(int);
+void down(sem_t *);
+void up(sem_t *);
 
 void print_status();
 
@@ -21,25 +26,30 @@ int was_interrupted = 0;
 
 void init_ipc() {
 
+    int access_0660 = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP;
+
     // init shared memory
-    key_t shm_key = ftok(IPC_BASE_DIR, IPC_SHM_ID);
-    if((shared_memory_id = shmget(shm_key, SHM_SIZE, O_CREAT | O_EXCL , S_IRUSR | S_IWUSR | S_IRGRO | S_IWGRP)) == -1) {
+    if((shared_memory_fd = shm_open(IPC_SHM_NAME, O_RDWR | O_CREAT | O_EXCL, access_0660)) == -1) {
 
-
-        if((shared_memory_id = shmget(shm_key, SHM_SIZE, 0)) == -1) {
-            perror("init_ipc(), shm get");
+        if((shared_memory_fd = shm_open(IPC_SHM_NAME, O_RDWR, access_0660)) == -1) {
+            perror("init_ipc(), shm_open");
             exit(-1);
         }
 
-        if((shm_ptr = shmat(shared_memory_id, 0, 0)) == (void *) -1) {
-            perror("init_ipc(), shm attach");
+        if((shm_ptr = mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0)) == MAP_FAILED) {
+            perror("init_ipc(), shm mmap");
             exit(-1);
         }
 
     } else {
 
-        if((shm_ptr = shmat(shared_memory_id, 0, 0)) == (void *) -1) {
-            perror("init_ipc(), shm attach");
+        if(ftruncate(shared_memory_fd, SHM_SIZE) == -1) {
+            perror("SHM file truncate error");
+            exit(-1);
+        }
+
+        if((shm_ptr = mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, shared_memory_fd, 0)) == MAP_FAILED) {
+            perror("init_ipc(), shm mmap");
             exit(-1);
         }
 
@@ -47,23 +57,22 @@ void init_ipc() {
         *((int*)(shm_ptr+START_INDEX_OFFSET)) = 0;
     }
 
-
     // init semaphores
-    if((mutex_semaphore = sem_open(IPC_SEM_MUTEX_NAME, O_CREAT | O_EXCL, S_IRUSR | S_IWUSR | S_IRGRO | S_IWGRP, 1)) == SEM_FAILED) {
+    if((mutex_semaphore = sem_open(IPC_SEM_MUTEX_NAME, O_CREAT | O_EXCL, access_0660, 1)) == SEM_FAILED) {
         if((mutex_semaphore = sem_open(IPC_SEM_MUTEX_NAME, 0)) == SEM_FAILED) {
             perror("init_ipc(), mutex semaphore init");
             exit(-1);
         }
     }
 
-    if((put_semaphore = sem_open(IPC_SEM_PUT_NAME, O_CREAT | O_EXCL , S_IRUSR | S_IWUSR | S_IRGRO | S_IWGRP, MAX_TASK_CAPACITY)) == SEM_FAILED) {
+    if((put_semaphore = sem_open(IPC_SEM_PUT_NAME, O_CREAT | O_EXCL , access_0660, MAX_TASK_CAPACITY)) == SEM_FAILED) {
         if((put_semaphore = sem_open(IPC_SEM_PUT_NAME, 0)) == SEM_FAILED) {
             perror("init_ipc(), put semaphore init");
             exit(-1);
         }
     }
 
-    if((get_semaphore = sem_open(IPC_SEM_GET_NAME, 1, O_CREAT | O_EXCL , S_IRUSR | S_IWUSR | S_IRGRO | S_IWGRP, 0)) == SEM_FAILED) {
+    if((get_semaphore = sem_open(IPC_SEM_GET_NAME, O_CREAT | O_EXCL , access_0660, 0)) == SEM_FAILED) {
         if((get_semaphore = sem_open(IPC_SEM_GET_NAME, 0)) == SEM_FAILED) {
             perror("init_ipc(), get_semaphore_init");
             exit(-1);
@@ -118,29 +127,17 @@ void get_task(task *task_ptr) {
 
 }
 
-void down(int sem_id) {
+void down(sem_t *sem_id) {
 
-    struct sembuf decr;
-
-    decr.sem_num = 0;
-    decr.sem_op = -1;
-    decr.sem_flg = 0;
-
-    if(semop(sem_id, &decr, 1) == -1) {
+    if(sem_wait(sem_id) == -1) {
         perror("Semaphore down");
         exit(-1);
     }
 }
 
-void up(int sem_id) {
+void up(sem_t *sem_id) {
 
-    struct sembuf incr;
-
-    incr.sem_num = 0;
-    incr.sem_op  = 1;
-    incr.sem_flg = 0;
-
-    if(semop(sem_id, &incr, 1) == -1) {
+    if(sem_post(sem_id) == -1) {
         perror("Semaphore up");
         exit(-1);
     }
@@ -190,21 +187,21 @@ void cleanup() {
 
     init_ipc();
 
-    if(-1 == semctl(mutex_semaphore, 0, IPC_RMID, NULL)) {
+    if(-1 == sem_close(mutex_semaphore)) {
         perror("Removing mutex semaphore");
     }
 
-    if(-1 == semctl(get_semaphore, 0, IPC_RMID, NULL)) {
+    if(-1 == sem_close(get_semaphore)) {
         perror("Removing get semaphore");
     }
 
-    if(-1 == semctl(put_semaphore, 0, IPC_RMID, NULL)) {
+    if(-1 == sem_close(put_semaphore)) {
         perror("Removing put semaphore");
     }
 
-    if(-1 == shmctl(shared_memory_id, IPC_RMID, NULL)) {
-        perror("Removing shared memory");
-    }
+//    if(-1 == shmctl(shared_memory_fd, IPC_RMID, NULL)) {
+//        perror("Removing shared memory");
+//    }
 
     printf("IPC artifacts removed\n");
 }

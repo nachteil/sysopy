@@ -12,13 +12,13 @@ all: consumer producer cleanup
 	@echo
 
 consumer: dirs consumer.o common.o lab7ipc.o
-	$(CC) -Wall -o $(BIN_DIR)/consumer $(OBJ_DIR)/consumer.o $(OBJ_DIR)/common.o $(OBJ_DIR)/lab7ipc.o -lrt
+	$(CC) -Wall -o $(BIN_DIR)/consumer $(OBJ_DIR)/consumer.o $(OBJ_DIR)/common.o $(OBJ_DIR)/lab7ipc.o -lrt -pthread
 
 consumer.o: $(SRC_DIR)/consumer.c $(SRC_DIR)/consumer.h
 	$(CC) $(CC_FLAGS) -o $(OBJ_DIR)/consumer.o $(SRC_DIR)/consumer.c
 
 producer: dirs producer.o common.o lab7ipc.o
-	$(CC) -Wall -o $(BIN_DIR)/producer $(OBJ_DIR)/producer.o $(OBJ_DIR)/common.o $(OBJ_DIR)/lab7ipc.o -lrt
+	$(CC) -Wall -o $(BIN_DIR)/producer $(OBJ_DIR)/producer.o $(OBJ_DIR)/common.o $(OBJ_DIR)/lab7ipc.o -lrt -pthread
 
 producer.o: $(SRC_DIR)/producer.c $(SRC_DIR)/producer.h
 	$(CC) $(CC_FLAGS) -o $(OBJ_DIR)/producer.o $(SRC_DIR)/producer.c
@@ -33,7 +33,7 @@ cleanup.o: $(SRC_DIR)/cleanup.c
 	$(CC) $(CC_FLAGS) -o $(OBJ_DIR)/cleanup.o $(SRC_DIR)/cleanup.c
 
 cleanup: dirs cleanup.o lab7ipc.o common.o
-	$(CC) -Wall -o $(BIN_DIR)/cleanup $(OBJ_DIR)/lab7ipc.o $(OBJ_DIR)/cleanup.o $(OBJ_DIR)/common.o -lrt
+	$(CC) -Wall -o $(BIN_DIR)/cleanup $(OBJ_DIR)/lab7ipc.o $(OBJ_DIR)/cleanup.o $(OBJ_DIR)/common.o -lrt -pthread
 
 dirs:
 	if [ ! -d $(OBJ_DIR) ]; then mkdir $(OBJ_DIR); fi
@@ -42,3 +42,5 @@ dirs:
 clean:
 	if [ -d $(OBJ_DIR) ]; then rm -rf $(OBJ_DIR); fi
 	if [ -d $(BIN_DIR) ]; then rm -rf $(BIN_DIR); fi
+	rm -rf /dev/shm/sem.sem*
+	rm -rf /dev/shm/sharedmem

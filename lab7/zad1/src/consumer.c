@@ -16,6 +16,7 @@ int main(int argc, char * argv []) {
     }
 
     init_ipc();
+    add_signal_handlers();
 
     while(should_continue()) {
 

@@ -10,6 +10,7 @@
 int main(int argc, char * argv[]) {
 
     init_ipc();
+    add_signal_handlers();
 
     int seed = (int ) (((long) time((void *)0) * (long) clock()) % 1000000);
     srand(seed);

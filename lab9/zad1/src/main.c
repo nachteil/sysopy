@@ -15,13 +15,12 @@
 #define NUM_COURSES_TO_EAT 10
 
 pthread_t philosopher_threads[NUM_PHILOSOPHERS];
-pthread_mutex_t fork_mutex[NUM_PHILOSOPHERS];
+pthread_mutex_t fork_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 pthread_cond_t fork_cv[NUM_PHILOSOPHERS];
 
 int main(int argc, char *argv[]) {
 
     for(int i = 0; i < NUM_PHILOSOPHERS; ++i) {
-        fork_mutexes[i] = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
         fork_cv[i] = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
     }
 
@@ -57,35 +56,33 @@ void *dining_function(void *id_ptr) {
         second_fork_id = (my_id+1) % NUM_PHILOSOPHERS;
     }
 
-    for(int count = 0; count < NUM_COURSES_TO_EAT; ++count) {
+    printf("Philosopher %d starts\n", my_id);
 
-        pthread_mutex_t first_fork = fork_mutexes[first_fork_id];
-        pthread_mutex_t second_fork = fork_mutexes[second_fork_id];
+    for(int count = 0; count < NUM_COURSES_TO_EAT; ++count) {
 
         pthread_cond_t first_cv = fork_cv[first_fork_id];
         pthread_cond_t second_cv = fork_cv[second_fork_id];
 
-        if (pthread_mutex_lock(&first_fork) != 0) {
-            error("Error acquiring fork (mutex lock operation)");
+        if (pthread_mutex_lock(&fork_mutex) != 0) {
+            error("Error acquiring fork mutex");
         }
-        while(pthread_cond_wait(&got_request, &a_mutex) != 0) {
 
-        }
-        if (pthread_mutex_lock(&second_fork) != 0) {
-            error("Error acquiring fork (mutex lock operation)");
-        }
+        printf("Philosopher %d passed mutex\n", my_id);
+
+        while(pthread_cond_wait(&first_cv, &fork_mutex) != 0);
+        printf("Philosopher %d got fork %d\n", my_id, first_fork_id);
+        while(pthread_cond_wait(&second_cv, &fork_mutex) != 0);
 
         printf("Philosopher %d acquired forks %d and %d. Started eating.\n", my_id, first_fork_id, second_fork_id);
 
         int MICROS_PER_MILLI = 1000;
         usleep(10 * MICROS_PER_MILLI);
 
-        if (pthread_mutex_unlock(&first_fork) != 0) {
-            error("Error releasing fork (mutex lock operation)");
-        }
-        if (pthread_mutex_unlock(&second_fork) != 0) {
-            error("Error releasing fork (mutex lock operation)");
-        }
+        if(pthread_mutex_unlock(&fork_mutex) != 0) {error("Mutex unlock failed");}
+        if(pthread_mutex_unlock(&fork_mutex) != 0) {error("Mutex unlock failed");}
+
+        if(pthread_cond_broadcast(&first_cv) != 0) {error("CV broadcast failed");}
+        if(pthread_cond_broadcast(&second_cv) != 0) {error("CV broadcast failed");}
     }
 
     return NULL;

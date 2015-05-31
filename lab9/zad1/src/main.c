@@ -1,89 +1,123 @@
 #define _GNU_SOURCE
 
 #include "main.h"
-#include <fcntl.h>
-#include "stdlib.h"
-#include <pthread.h>
-#include "common.h"
-#include <sys/types.h>
-#include "sys/stat.h"
-#include <unistd.h>
 #include "stdio.h"
+#include "stdlib.h"
+#include "unistd.h"
+#include "pthread.h"
+#include "semaphore.h"
+#include "sched.h"
 #include "string.h"
+#include "stdlib.h"
+#include "signal.h"
+#include "sys/time.h"
+#include "time.h"
+#include "common.h"
 
 #define NUM_PHILOSOPHERS 5
-#define NUM_COURSES_TO_EAT 10
+#define COURSES_TO_EAT 10
 
-pthread_t philosopher_threads[NUM_PHILOSOPHERS];
-pthread_mutex_t fork_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-pthread_cond_t fork_cv[NUM_PHILOSOPHERS];
+#define FORK_FREE 63
+#define FORK_USED 2345
+
+pthread_cond_t widelec[NUM_PHILOSOPHERS];
+pthread_mutex_t fork_mutex[NUM_PHILOSOPHERS];
+int fork_status[NUM_PHILOSOPHERS];
+pthread_t thread_ids[NUM_PHILOSOPHERS];
 
 int main(int argc, char *argv[]) {
-
-    for(int i = 0; i < NUM_PHILOSOPHERS; ++i) {
-        fork_cv[i] = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
-    }
-
     int ints[NUM_PHILOSOPHERS];
-    for(int i = 0; i < NUM_PHILOSOPHERS; ++i) {
-        ints[i] = i+1;
+    srand(time(NULL));
+
+    for (int i = 0; i < NUM_PHILOSOPHERS; ++i) {
+
+        ints[i] = i;
+        widelec[i] = (pthread_cond_t) PTHREAD_COND_INITIALIZER;
+        fork_mutex[i] = (pthread_mutex_t) PTHREAD_MUTEX_INITIALIZER;
+        fork_status[i] = FORK_FREE;
     }
 
-    for(int i = 0; i < NUM_PHILOSOPHERS; ++i) {
-        if (pthread_create(&philosopher_threads[i], NULL, dining_function, &(ints[i])) != 0) {
+    for (int i = 0; i < NUM_PHILOSOPHERS; ++i) {
+        if (pthread_create(&thread_ids[i], NULL, dining_function, &ints[i])) {
             error("Thread creation error");
         }
     }
 
-    for(int i = 0; i < NUM_PHILOSOPHERS; ++i) {
-        if (pthread_join(philosopher_threads[i], NULL) != 0) {
-            error("Thread join error");
+    for (int i = 0; i < NUM_PHILOSOPHERS; ++i) {
+        if (pthread_join(thread_ids[i], NULL)) {
+            error("Thread joining error");
         }
     }
 
     exit(0);
 }
 
-void *dining_function(void *id_ptr) {
 
-    int my_id = *((int *) id_ptr);
+void *dining_function(void *arg_ptr) {
+    int my_id = *((int *) arg_ptr);
+    int MICRO_PER_MILLI = 1000;
 
-    int first_fork_id = (my_id+1) % NUM_PHILOSOPHERS;;
-    int second_fork_id = my_id;
+    int first_fork = my_id;
+    int second_fork = my_id + 1;
 
-    if(my_id %2) {
-        first_fork_id = my_id;
-        second_fork_id = (my_id+1) % NUM_PHILOSOPHERS;
+    if (my_id == NUM_PHILOSOPHERS - 1) {
+        first_fork = 0;
+        second_fork = my_id;
     }
 
-    printf("Philosopher %d starts\n", my_id);
+    for (int count = 0; count < COURSES_TO_EAT; ++count) {
 
-    for(int count = 0; count < NUM_COURSES_TO_EAT; ++count) {
+        usleep(100 * MICRO_PER_MILLI);
 
-        pthread_cond_t first_cv = fork_cv[first_fork_id];
-        pthread_cond_t second_cv = fork_cv[second_fork_id];
-
-        if (pthread_mutex_lock(&fork_mutex) != 0) {
-            error("Error acquiring fork mutex");
+        // acquire first fork
+        lock_mutex(&fork_mutex[first_fork]);
+        while (fork_status[first_fork] == FORK_USED) {
+            wait_condition(&widelec[first_fork], &fork_mutex[first_fork]);
         }
+        fork_status[first_fork] = FORK_USED;
+        unlock_mutex(&fork_mutex[first_fork]);
 
-        printf("Philosopher %d passed mutex\n", my_id);
+        // acquire second fork
+        lock_mutex(&fork_mutex[second_fork]);
+        while (fork_status[second_fork] == FORK_USED) {
+            wait_condition(&widelec[second_fork], &fork_mutex[second_fork]);
+        }
+        fork_status[second_fork] = FORK_USED;
+        unlock_mutex(&fork_mutex[second_fork]);
 
-        while(pthread_cond_wait(&first_cv, &fork_mutex) != 0);
-        printf("Philosopher %d got fork %d\n", my_id, first_fork_id);
-        while(pthread_cond_wait(&second_cv, &fork_mutex) != 0);
+        printf("Philosopher %d is now eating\n", my_id);
 
-        printf("Philosopher %d acquired forks %d and %d. Started eating.\n", my_id, first_fork_id, second_fork_id);
+        usleep(100 * MICRO_PER_MILLI);
 
-        int MICROS_PER_MILLI = 1000;
-        usleep(10 * MICROS_PER_MILLI);
+        // release and signal first fork free
+        lock_mutex(&fork_mutex[first_fork]);
+        fork_status[first_fork] = FORK_FREE;
+        signal_condition(&widelec[first_fork]);
+        unlock_mutex(&fork_mutex[first_fork]);
 
-        if(pthread_mutex_unlock(&fork_mutex) != 0) {error("Mutex unlock failed");}
-        if(pthread_mutex_unlock(&fork_mutex) != 0) {error("Mutex unlock failed");}
-
-        if(pthread_cond_broadcast(&first_cv) != 0) {error("CV broadcast failed");}
-        if(pthread_cond_broadcast(&second_cv) != 0) {error("CV broadcast failed");}
+        // release and signal second fork free
+        lock_mutex(&fork_mutex[second_fork]);
+        fork_status[second_fork] = FORK_FREE;
+        signal_condition(&widelec[second_fork]);
+        unlock_mutex(&fork_mutex[second_fork]);
     }
 
+    printf("%d is done!\n", my_id);
     return NULL;
+}
+
+void signal_condition(pthread_cond_t *condition) {
+    if (pthread_cond_signal(condition)) { error("Condition signaling error"); }
+}
+
+void unlock_mutex(pthread_mutex_t *mutex) {
+    if (pthread_mutex_unlock(mutex) != 0) { error("Mutex unlcoking error"); }
+}
+
+void wait_condition(pthread_cond_t *condition, pthread_mutex_t *mutex) {
+    if (pthread_cond_wait(condition, mutex) != 0) { error("Condition wait error"); }
+}
+
+void lock_mutex(pthread_mutex_t *mutex) {
+    if (pthread_mutex_lock(mutex) != 0) { error("Mutex locking error"); }
 }

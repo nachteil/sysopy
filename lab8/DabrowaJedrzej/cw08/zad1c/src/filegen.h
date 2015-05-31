@@ -1,0 +1,4 @@
+#ifndef SYSOPY_FILEGEN_H
+#define SYSOPY_FILEGEN_H
+
+#endif //SYSOPY_FILEGEN_H

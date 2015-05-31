@@ -1,0 +1,41 @@
+Komputer klasy PC
+Intel Core i5 4690k
+Ubuntu 14.04 LTS
+3.16.0-34-generic
+
+1)
+	SIGUSR1 	-	User defined signal 1 [wyświetlony komunikat, następnie zakończenie programu]
+	SIGTERM 	-	Terminated
+	SIGKILL		-	Killed
+	SIGSTOP		- 	[2]+  Stopped                 ./bin/main 4 out 3 ko 1 SIGSTOP
+
+2)
+
+	SIGUSR1 	-	[Bez efektu]
+	SIGTERM 	-	[Bez efektu]
+	SIGKILL		-	[Nie można zignorować SIGKILL]
+	SIGSTOP		- 	[Nie można zignorować SIGSTOP]
+
+3)
+
+	SIGUSR1 	-	[Sygnał odebrany, wyświetlony komunikat, program kontunuował wykonanie]
+	SIGTERM 	-	[Sygnał odebrany, wyświetlony komunikat, program kontunuował wykonanie]
+	SIGKILL		-	[Nie można zignorować SIGKILL]
+	SIGSTOP		- 	[Nie można zignorować SIGSTOP]
+
+4)
+
+	SIGUSR1 	-	[Bez efektu]
+	SIGTERM 	-	[Bez efektu]
+	SIGKILL		-	Killed
+	SIGSTOP		- 	[3]+  Stopped                 ./bin/main 4 out 3 ko 4 SIGSTOP
+
+5)
+
+	SIGUSR1 	-	[Sygnał odebrany, wyświetlony komunikat, program kontunuował wykonanie]
+	SIGTERM 	-	[Sygnał odebrany, wyświetlony komunikat, program kontunuował wykonanie]
+	SIGKILL		-	Killed
+	SIGSTOP		- 	[4]+  Stopped                 ./bin/main 4 out 3 ko 5 SIGSTOP
+
+Cały program został zakończony z poniższym komunikatem:
+Floating point exception (core dumped)

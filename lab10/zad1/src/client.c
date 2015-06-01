@@ -8,8 +8,13 @@
 #include <fcntl.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include "sys/select.h"
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 #include "string.h"
 #include "stdlib.h"
+#include "errno.h"
 #include "unistd.h"
 #include "stdio.h"
 #include "time.h"
@@ -25,6 +30,8 @@ sigset_t zero_mask;
 
 pthread_t sender_receiver_thread;
 pthread_t io_thread;
+
+int sck;
 
 int main(int argc, char *argv[]) {
 
@@ -62,14 +69,13 @@ int main(int argc, char *argv[]) {
 
     sockfd = socket(res -> ai_family, res -> ai_socktype, res -> ai_protocol);
     connect(sockfd, res->ai_addr, res->ai_addrlen);
+    sck = sockfd;
+    printf("Connected to server\n");
 
     init_signals();
 
-    // register this id in server
-    send(sockfd, my_id, strlen(my_id), 0);
-
     // start io thread
-    if((pthread_create(&(io_thread), NULL, stdin_read_fun, NULL)) != 0) {
+    if((pthread_create(&(io_thread), NULL, stdin_read_fun, (void *)my_id)) != 0) {
         error("Thread creation error");
     }
 
@@ -81,42 +87,32 @@ int main(int argc, char *argv[]) {
 
 void sender_receiver_fun(int sockfd) {
 
-    int num_msgs_to_send;
-    char **msgs_cpy;
+    fd_set orig;
+    fd_set read_fd;
+
+    FD_ZERO(&orig);
+    FD_ZERO(&read_fd);
+
+    FD_SET(sockfd, &orig);
+
+    char buf[350];
+    int status;
 
     while(1 > 0) {
 
-        // wait for signal
-        sigsuspend(&zero_mask);
-        if(messages_waiting == 0) {
-            continue;
-        } else {
-            num_msgs_to_send = messages_waiting;
+        read_fd = orig;
+        status = select(sockfd+1, &read_fd, NULL, NULL, NULL);
+        printf("Status: %d\n", status);
+        if (status == -1 && errno != EINTR) {
+            error("select() error");
+            exit(-1);
         }
 
-        // enter critical section and copy waiting messages
-        lock_data_mutex();
-        {
-            msgs_cpy = (char **) malloc(messages_waiting * sizeof(char *));
-            if(msgs_cpy == NULL) {
-                mem_error();
-            }
-            for(int i = 0; i < messages_waiting; ++i) {
-                *(msgs_cpy+i) = get_copy(*(messages+i));
-                memset(*(messages+1), 0, MSG_MAX_LEN);
-            }
-            messages_waiting = 0;
+        if(status != -1 && FD_ISSET(sockfd, &read_fd)) {
+            memset(buf, 0, 350);
+            recv(sockfd, buf, 350, 0);
+            printf("%s\n", buf);
         }
-        unlock_data_mutex();
-
-        // send messages
-        for(int i = 0; i < num_msgs_to_send; ++i) {
-            char * msg_to_send = *(msgs_cpy+i);
-            printf("Message to send: %s\n", msg_to_send);
-            send(sockfd, msg_to_send, strlen(msg_to_send)+1, 0);
-            free(msg_to_send);
-        }
-        free(msgs_cpy);
     }
 }
 
@@ -159,12 +155,18 @@ void init_msg_buff() {
 
 void *stdin_read_fun(void *arg_ptr) {
 
+    char *my_id = (char *)arg_ptr;
     int buff_size = MSG_MAX_LEN+2;
 //    int characters_read;
     char *msg_buf;
+    char *msg_with_header;
     int n;
+    int id_len = strlen(my_id);
 
     if((msg_buf = (char *) malloc(buff_size)) == NULL) {
+        mem_error();
+    }
+    if((msg_with_header = (char *) malloc(buff_size + id_len+1)) == NULL) {
         mem_error();
     }
 
@@ -172,6 +174,9 @@ void *stdin_read_fun(void *arg_ptr) {
 
         n = buff_size;
         getline(&msg_buf, (size_t*)&n, stdin);
+        strcpy(msg_with_header, my_id);
+        msg_with_header[id_len] = '\n';
+        strcpy(&(msg_with_header[id_len+1]), msg_buf);
 
         lock_data_mutex();
         {
@@ -181,7 +186,7 @@ void *stdin_read_fun(void *arg_ptr) {
             }
 
             // append message at the end of the buffer
-            strcpy(*(messages+messages_waiting), msg_buf);
+            strcpy(*(messages+messages_waiting), msg_with_header);
             ++messages_waiting;
         }
         unlock_data_mutex();
@@ -222,5 +227,38 @@ void unlock_data_mutex() {
 }
 
 void sig_handle(int signo) {
-    // just ignore
+
+    int num_msgs_to_send;
+    char **msgs_cpy;
+
+    if(messages_waiting == 0) {
+        return;
+    } else {
+        num_msgs_to_send = messages_waiting;
+    }
+
+    // enter critical section and copy waiting messages
+    lock_data_mutex();
+    {
+        msgs_cpy = (char **) malloc(messages_waiting * sizeof(char *));
+        if(msgs_cpy == NULL) {
+            mem_error();
+        }
+        for(int i = 0; i < messages_waiting; ++i) {
+            *(msgs_cpy+i) = get_copy(*(messages+i));
+            memset(*(messages+1), 0, MSG_MAX_LEN);
+        }
+        messages_waiting = 0;
+    }
+    unlock_data_mutex();
+
+    // send messages
+    for(int i = 0; i < num_msgs_to_send; ++i) {
+        char * msg_to_send = *(msgs_cpy+i);
+        send(sck, msg_to_send, strlen(msg_to_send)+1, 0);
+        printf("Sending\n");
+        free(msg_to_send);
+    }
+    free(msgs_cpy);
+    init_signals();
 }

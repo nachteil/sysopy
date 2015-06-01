@@ -16,6 +16,9 @@
 #include "time.h"
 #include "sched.h"
 
+int listening_socket;
+int sockets[MAX_CLIENTS];
+
 int main(int argc, char *argv[]) {
 
     if (argc != DESIRED_NUM_PARAMS + 1) {
@@ -27,7 +30,6 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    int sockets[MAX_CLIENTS];
     for(int i = 0; i < MAX_CLIENTS; ++i) {
         sockets[i] = -1;
     }
@@ -36,7 +38,6 @@ int main(int argc, char *argv[]) {
 //    char *unix_socket_path = argv[2];
 
     struct addrinfo hints, *res;
-    int listening_socket;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
@@ -60,7 +61,6 @@ int main(int argc, char *argv[]) {
 
     char buf[350];
     int maxfd = listening_socket;
-    struct sockaddr_storage remoteaddr;
     int newfd;
 
     while(1 > 0) {
@@ -106,13 +106,27 @@ int main(int argc, char *argv[]) {
                     }
 
                 } else {
+                    int nbytes;
                     memset(buf, 0, 350);
-                    recv(sockets[i], buf, 350, 0);
+                    nbytes = recv(sockets[i], buf, 350, 0);
                     printf("Message: %s\n", buf);
-                    for(int j = 0; j < MAX_CLIENTS; ++j) {
-                        if(j != i && sockets[j] != -1 && sockets[j] != listening_socket) {
-                            send(sockets[j], buf, strlen(buf)+1, 0);
-                            printf("Sending from %d to %d \n", i, j);
+
+                    if(nbytes <= 0) {
+                        if (nbytes == 0) {
+                            printf("%d closed connection ;(\n", i);
+                        } else {
+                            perror("revc()");
+                        }
+                        sockets[i] = -1;
+                        close(sockets[i]);
+                        FD_CLR(sockets[i], &orig);
+                        maxfd = find_max();
+                    } else {
+                        for(int j = 0; j < MAX_CLIENTS; ++j) {
+                            if(j != i && sockets[j] != -1 && sockets[j] != listening_socket) {
+                                send(sockets[j], buf, strlen(buf)+1, 0);
+                                printf("Sending from %d to %d \n", i, j);
+                            }
                         }
                     }
                 }
@@ -123,4 +137,13 @@ int main(int argc, char *argv[]) {
     }
 
     exit(0);
+}
+
+int find_max() {
+
+    int max = listening_socket;
+    for(int i = 0; i < MAX_CLIENTS; ++i) {
+        max = (sockets[i] != -1 && sockets[i] > max) ? sockets[i] : max;
+    }
+    return max;
 }

@@ -5,4 +5,6 @@
 #define MAX_WAITING_CONNECTIONS 15
 #define MAX_CLIENTS 15
 
+int find_max();
+
 #endif //SYSOPY_SERVER_H

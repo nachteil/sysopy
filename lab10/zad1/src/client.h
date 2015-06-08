@@ -3,6 +3,9 @@
 
 #define EXPECTED_NUM_PARAMS 4
 
+int create_internet_socket(char *argv[]);
+int create_unix_socket(char *, char *);
+
 void *stdin_read_fun(void *);
 void lock_data_mutex();
 void unlock_data_mutex();
